@@ -4,9 +4,9 @@
 import fs from "fs";
 
 const API_KEY = process.env.REDTRACK_API_KEY;
-const NTFY_TOPIC = process.env.NTFY_TOPIC || "torres-vendas-kx9m42";
+const NTFY_TOPIC = process.env.NTFY_TOPIC;
 const STATE = "state/seen.json";
-if (!API_KEY) { console.error("REDTRACK_API_KEY ausente"); process.exit(1); }
+if (!API_KEY || !NTFY_TOPIC) { console.error("REDTRACK_API_KEY/NTFY_TOPIC ausente"); process.exit(1); }
 
 const day = (offset) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
 const all = [];
@@ -39,11 +39,11 @@ for (const c of novas) {
     headers: { Title: `Venda! ${valor}`, Priority: "high", Tags: "moneybag" },
     body,
   });
-  console.log("notificada:", c.id, valor, "ntfy:", res.status);
+  console.log("notificada (ntfy", res.status + ")");
 }
 
 // limpa ids com mais de 3 dias
 const cutoff = Date.now() - 3 * 86400000;
 for (const [id, ts] of Object.entries(seen)) if (ts < cutoff) delete seen[id];
 fs.writeFileSync(STATE, JSON.stringify(seen));
-console.log(`ok — ${vendas.length} vendas TORRES no período, ${novas.length} novas`);
+console.log(`ok — ${novas.length} novas`);
