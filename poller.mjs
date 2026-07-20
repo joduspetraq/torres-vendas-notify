@@ -33,7 +33,10 @@ const novas = vendas.filter((c) => !seen[c.id]);
 for (const c of novas) {
   seen[c.id] = Date.now();
   const valor = `$${Number(c.payout).toFixed(2)}`;
-  const body = `${(c.campaign || "").trim()}\n${valor} — ${c.offer || c.type || "venda"} (${c.country || "?"})`;
+  const hora = c.created_at
+    ? new Date(c.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })
+    : "";
+  const body = `${(c.campaign || "").trim()}\n${valor} — ${c.offer || c.type || "venda"} (${c.country || "?"})${hora ? ` às ${hora}` : ""}`;
   const res = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
     method: "POST",
     headers: { Title: `Venda! ${valor}`, Priority: "high", Tags: "moneybag" },
