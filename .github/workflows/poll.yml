@@ -8,32 +8,27 @@ concurrency:
   group: poll
   cancel-in-progress: false
 
-permissions:
-  contents: write
-
 jobs:
   poll:
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: deps
+        run: npm i --no-save --silent @libsql/client
       - name: loop de polling (1x por minuto, ~5h45 por job)
         env:
           REDTRACK_API_KEY: ${{ secrets.REDTRACK_API_KEY }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_TOKEN: ${{ secrets.TURSO_TOKEN }}
         run: |
-          git config user.name "poller-bot"
-          git config user.email "bot@users.noreply.github.com"
           for i in $(seq 1 340); do
-            node poller.mjs || true
-            if ! git diff --quiet state/seen.json; then
-              git add state/seen.json
-              git commit -qm "state"
-              git pull -q --rebase || true
-              git push -q || true
-            fi
-            sleep 55
+            timeout 120 node poller.mjs || true
+            sleep 50
           done

@@ -1,0 +1,40 @@
+name: watchdog
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: deps
+        run: npm i --no-save --silent @libsql/client
+      - name: confere heartbeat
+        id: hb
+        env:
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_TOKEN: ${{ secrets.TURSO_TOKEN }}
+        run: node watchdog.mjs
+      - name: religa o poller se travado
+        if: steps.hb.outputs.stale == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          echo "heartbeat parado — cancelando runs presos e religando"
+          for id in $(gh run list -R "$GITHUB_REPOSITORY" -w poll-vendas -s in_progress --json databaseId -q '.[].databaseId'); do
+            gh run cancel "$id" -R "$GITHUB_REPOSITORY" || true
+          done
+          sleep 10
+          gh workflow run poll-vendas -R "$GITHUB_REPOSITORY" --ref main
+          curl -s -X POST "https://ntfy.sh/$NTFY_TOPIC" \
+            -H "Title: 🔧 Watchdog religou o poller" -H "Priority: default" -H "Tags: wrench" \
+            -d "Heartbeat parado ha 8min+. Run travado cancelado e poller redisparado automaticamente." || true
