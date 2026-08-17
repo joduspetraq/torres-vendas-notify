@@ -1,5 +1,6 @@
 // Poller de vendas TORRES — RedTrack -> ntfy (roda no GitHub Actions)
-// Filtro: campanha começa com "TORRES" E payout > 0 (só venda de verdade)
+// Filtro: campanha OU source começa com "TORRES" E payout > 0 (só venda de verdade)
+// source cobre o FACEBOOK ("TORRES - FACEBOOK WL") — campanhas META do Leandro usam "Meta - ADS" e ficam fora
 // Estado (dedupe) no TURSO (db ds24-webhook, tabela torres_seen) — o esquema antigo de
 // commitar state/seen.json no git perdia estado (fila do Actions + rebase conflict)
 // e causava rajadas de notificação duplicada + atrasos.
@@ -52,7 +53,7 @@ try {
 }
 await kvSet("rt_fails", 0);
 
-const vendas = all.filter((c) => /^\s*TORRES/i.test(c.campaign || "") && Number(c.payout) > 0);
+const vendas = all.filter((c) => (/^\s*TORRES/i.test(c.campaign || "") || /^\s*TORRES/i.test(c.source || "")) && Number(c.payout) > 0);
 
 // primeira execucao com tabela vazia: marca tudo como visto SEM notificar (migracao do seen.json)
 const count = Number((await db.execute("SELECT COUNT(*) n FROM torres_seen")).rows[0].n);
