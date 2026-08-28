@@ -32,3 +32,14 @@ jobs:
             timeout 120 node poller.mjs || true
             sleep 50
           done
+      # Auto-encadeamento: o job enfileira o proximo antes de morrer.
+      # Nao depende do cron do GitHub (que estrangula em conta free e abriu
+      # um buraco de 19min em 28/08). O concurrency group segura o novo run
+      # na fila ate este terminar. Cron e watchdog viram backup.
+      - name: enfileira o proximo job
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          sleep 30
+          gh workflow run poll-vendas -R "$GITHUB_REPOSITORY" --ref main
