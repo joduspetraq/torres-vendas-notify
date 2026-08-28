@@ -55,10 +55,12 @@ await kvSet("rt_fails", 0);
 
 const vendas = all.filter((c) => (/^\s*TORRES/i.test(c.campaign || "") || /^\s*TORRES/i.test(c.source || "")) && Number(c.payout) > 0);
 
-// primeira execucao com tabela vazia: marca tudo como visto SEM notificar (migracao do seen.json)
-const count = Number((await db.execute("SELECT COUNT(*) n FROM torres_seen")).rows[0].n);
-if (count === 0 && vendas.length) {
+// bootstrap SO na primeira execucao da vida (flag no kv). Antes era "tabela vazia" — e a limpeza de 3 dias
+// esvaziava a tabela em periodo sem vendas, entao a 1a venda depois de uma pausa era engolida sem notificar.
+const booted = (await db.execute({ sql: "SELECT v FROM torres_kv WHERE k='bootstrapped'", args: [] })).rows.length;
+if (!booted) {
   for (const c of vendas) await db.execute({ sql: "INSERT OR IGNORE INTO torres_seen (id, ts) VALUES (?,?)", args: [c.id, Date.now()] });
+  await kvSet("bootstrapped", "1");
   console.log("bootstrap: " + vendas.length + " vendas marcadas como vistas, nada notificado");
   process.exit(0);
 }
