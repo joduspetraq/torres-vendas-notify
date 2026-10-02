@@ -32,3 +32,8 @@ jobs:
             timeout 120 node poller.mjs || true
             sleep 50
           done
+      - name: encadeia o proximo job (nao depende do cron do GitHub, que atrasa)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: gh workflow run poll-vendas -R "$GITHUB_REPOSITORY" --ref main || true
