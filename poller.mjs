@@ -55,12 +55,13 @@ await kvSet("rt_fails", 0);
 
 // 22/10 (ele: "ntfy vai funcionar no meu redtrack tambem?"): RedTrack PRÓPRIO (produtor LungVicks, campanhas "LUNGVICKS - …").
 // Falha no RT próprio não derruba o do Leandro (só loga). Id com prefixo "k:" pra não colidir no dedupe.
+// 22/10 (ele: "nao quero que dispara upssell"): só a venda do front (type Purchase); upsell/downsell não notificam.
 const meus = [];
 if (process.env.REDTRACK_API_KEY_KLISMAN) {
   try {
     const r = await fetch(`https://api.redtrack.io/conversions?api_key=${process.env.REDTRACK_API_KEY_KLISMAN}&date_from=${day(-1)}&date_to=${day(0)}&limit=2000&page=1`, { signal: AbortSignal.timeout(30000) });
     if (!r.ok) throw new Error("RT próprio HTTP " + r.status);
-    for (const c of ((await r.json()).items || [])) if (/^\s*LUNGVICKS/i.test(c.campaign || "") && Number(c.payout) > 0) meus.push({ ...c, id: "k:" + c.id });
+    for (const c of ((await r.json()).items || [])) if (/^\s*LUNGVICKS/i.test(c.campaign || "") && /^purchase$/i.test(c.type || "") && Number(c.payout) > 0) meus.push({ ...c, id: "k:" + c.id });
   } catch (e) { console.error("RT próprio falhou:", String(e).slice(0, 150)); }
 }
 
