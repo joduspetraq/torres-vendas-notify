@@ -53,7 +53,18 @@ try {
 }
 await kvSet("rt_fails", 0);
 
-const vendas = all.filter((c) => (/^\s*TORRES/i.test(c.campaign || "") || /^\s*TORRES/i.test(c.source || "")) && Number(c.payout) > 0);
+// 22/10 (ele: "ntfy vai funcionar no meu redtrack tambem?"): RedTrack PRÓPRIO (produtor LungVicks, campanhas "LUNGVICKS - …").
+// Falha no RT próprio não derruba o do Leandro (só loga). Id com prefixo "k:" pra não colidir no dedupe.
+const meus = [];
+if (process.env.REDTRACK_API_KEY_KLISMAN) {
+  try {
+    const r = await fetch(`https://api.redtrack.io/conversions?api_key=${process.env.REDTRACK_API_KEY_KLISMAN}&date_from=${day(-1)}&date_to=${day(0)}&limit=2000&page=1`, { signal: AbortSignal.timeout(30000) });
+    if (!r.ok) throw new Error("RT próprio HTTP " + r.status);
+    for (const c of ((await r.json()).items || [])) if (/^\s*LUNGVICKS/i.test(c.campaign || "") && Number(c.payout) > 0) meus.push({ ...c, id: "k:" + c.id });
+  } catch (e) { console.error("RT próprio falhou:", String(e).slice(0, 150)); }
+}
+
+const vendas = all.filter((c) => (/^\s*TORRES/i.test(c.campaign || "") || /^\s*TORRES/i.test(c.source || "")) && Number(c.payout) > 0).concat(meus);
 
 // bootstrap SO na primeira execucao da vida (flag no kv). Antes era "tabela vazia" — e a limpeza de 3 dias
 // esvaziava a tabela em periodo sem vendas, entao a 1a venda depois de uma pausa era engolida sem notificar.
@@ -84,7 +95,7 @@ for (const c of novas) {
     const res = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
       signal: AbortSignal.timeout(20000),
       method: "POST",
-      headers: { Title: `Venda! ${valor}`, Priority: "high", Tags: "moneybag" },
+      headers: { Title: String(c.id).startsWith("k:") ? (/^purchase$/i.test(c.type || "") ? `Venda LungVicks! ${valor}` : `LungVicks ${c.type || "extra"} ${valor}`) : `Venda! ${valor}`, Priority: "high", Tags: "moneybag" },
       body,
     });
     if (!res.ok) throw new Error("ntfy HTTP " + res.status);

@@ -24,6 +24,7 @@ jobs:
       - name: loop de polling (1x por minuto, ~5h45 por job)
         env:
           REDTRACK_API_KEY: ${{ secrets.REDTRACK_API_KEY }}
+          REDTRACK_API_KEY_KLISMAN: ${{ secrets.REDTRACK_API_KEY_KLISMAN }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           TURSO_URL: ${{ secrets.TURSO_URL }}
           TURSO_TOKEN: ${{ secrets.TURSO_TOKEN }}
