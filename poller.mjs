@@ -54,6 +54,7 @@ try {
 await kvSet("rt_fails", 0);
 
 // 22/10 (ele: "ntfy vai funcionar no meu redtrack tambem?"): RedTrack PRÓPRIO (produtor LungVicks, campanhas "LUNGVICKS - …").
+// 25/10 (ele: "ed nao ta chegando ntfy"): ED afiliado no RT próprio (campanhas "ED - FB - …", Purchase $250 fixo) entra também, título "Venda ED!".
 // Falha no RT próprio não derruba o do Leandro (só loga). Id com prefixo "k:" pra não colidir no dedupe.
 // 22/10: "nao quero que dispara upssell" → depois (22/10 tarde): "o upssell, quero que apita sim na notificacao" — front, upsell e downsell apitam (reembolso/IC não).
 const meus = [];
@@ -61,7 +62,7 @@ if (process.env.REDTRACK_API_KEY_KLISMAN) {
   try {
     const r = await fetch(`https://api.redtrack.io/conversions?api_key=${process.env.REDTRACK_API_KEY_KLISMAN}&date_from=${day(-1)}&date_to=${day(0)}&limit=2000&page=1`, { signal: AbortSignal.timeout(30000) });
     if (!r.ok) throw new Error("RT próprio HTTP " + r.status);
-    for (const c of ((await r.json()).items || [])) if (/^\s*LUNGVICKS/i.test(c.campaign || "") && /^(purchase|upsell\d|downsell\d)$/i.test(c.type || "") && Number(c.payout) > 0) meus.push({ ...c, id: "k:" + c.id });
+    for (const c of ((await r.json()).items || [])) if (/^\s*(LUNGVICKS|ED\b)/i.test(c.campaign || "") && /^(purchase|upsell\d|downsell\d)$/i.test(c.type || "") && Number(c.payout) > 0) meus.push({ ...c, id: "k:" + c.id });
   } catch (e) { console.error("RT próprio falhou:", String(e).slice(0, 150)); }
 }
 
@@ -96,7 +97,7 @@ for (const c of novas) {
     const res = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
       signal: AbortSignal.timeout(20000),
       method: "POST",
-      headers: { Title: String(c.id).startsWith("k:") ? (/^purchase$/i.test(c.type || "") ? `Venda LungVicks! ${valor}` : `LungVicks ${c.type || "extra"} ${valor}`) : `Venda! ${valor}`, Priority: "high", Tags: "moneybag" },
+      headers: { Title: String(c.id).startsWith("k:") ? (/^\s*ED\b/i.test(c.campaign || "") ? `Venda ED! ${valor}` : /^purchase$/i.test(c.type || "") ? `Venda LungVicks! ${valor}` : `LungVicks ${c.type || "extra"} ${valor}`) : `Venda! ${valor}`, Priority: "high", Tags: "moneybag" },
       body,
     });
     if (!res.ok) throw new Error("ntfy HTTP " + res.status);
